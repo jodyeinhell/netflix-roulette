@@ -12,8 +12,6 @@ def load_data():
 
 df = load_data()
 
-st.markdown("<h1 style='text-align:center;font-family:Arial;'>Netflix Roulette</h1>", unsafe_allow_html=True)
-
 # -------- Genre Selector --------
 all_genres = sorted(set(
     genre.strip()
@@ -36,32 +34,40 @@ st.components.v1.html(f"""
     font-family: Arial, sans-serif;
 }}
 
-body {{
-    background-color:#111;
+html, body {{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#0f1117;
+    color:white;
+}}
+
+#wrapper {{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
 }}
 
 #wheelContainer {{
-    display:flex;
-    justify-content:center;
-    align-items:center;
     position:relative;
 }}
 
 #spinBtn {{
     position:absolute;
-    width:120px;
-    height:120px;
-    border-radius:60px;
-    border:2px solid #555;
-    background:#1f1f1f;
+    width:110px;
+    height:110px;
+    border-radius:55px;
+    border:1px solid #444;
+    background:#1c1f26;
     color:#ccc;
-    font-size:16px;
+    font-size:15px;
     cursor:pointer;
-    transition:0.3s;
 }}
 
 #spinBtn:hover {{
-    background:#2a2a2a;
+    background:#262a33;
 }}
 
 #modal {{
@@ -70,40 +76,46 @@ body {{
     left:0;
     width:100%;
     height:100%;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
     background:rgba(0,0,0,0.6);
     display:none;
     justify-content:center;
     align-items:center;
-    animation: fadeIn 0.4s ease;
-}}
-
-@keyframes fadeIn {{
-    from {{ opacity:0 }}
-    to {{ opacity:1 }}
 }}
 
 #modalContent {{
-    background:#1a1a1a;
-    padding:30px;
-    border-radius:16px;
-    width:500px;
+    background:#16181f;
+    padding:35px;
+    border-radius:18px;
+    width:480px;
     text-align:center;
-    box-shadow:0 0 35px rgba(170,200,255,0.6);
+    box-shadow:0 0 35px rgba(170,200,255,0.5);
+    position:relative;
+}}
+
+#modalContent h2 {{
+    color:white;
+    margin-bottom:10px;
+}}
+
+#modalContent p {{
+    color:white;
+    margin:6px 0;
 }}
 
 #closeBtn {{
     position:absolute;
-    top:20px;
-    right:30px;
-    font-size:22px;
+    top:15px;
+    right:20px;
+    font-size:20px;
     cursor:pointer;
+    color:white;
 }}
 
 #spinAgain {{
     margin-top:20px;
     padding:10px 20px;
-    background:#2a2a2a;
+    background:#1f232b;
     color:white;
     border:1px solid #444;
     border-radius:8px;
@@ -111,9 +123,15 @@ body {{
 }}
 </style>
 
+<div id="wrapper">
+
+<h1 style="margin-bottom:10px;">Netflix Roulette</h1>
+
 <div id="wheelContainer">
-    <canvas id="wheel" width="650" height="650"></canvas>
+    <canvas id="wheel" width="520" height="520"></canvas>
     <button id="spinBtn">SPIN</button>
+</div>
+
 </div>
 
 <div id="modal">
@@ -136,27 +154,27 @@ const resultText = document.getElementById("resultText");
 const closeBtn = document.getElementById("closeBtn");
 const spinAgain = document.getElementById("spinAgain");
 
-const radius = canvas.width / 2;
+const radius = canvas.width/2;
 let slices = 50;
 let movies = [];
 let angle = 0;
 let spinning = false;
 let winnerIndex = null;
 
-function generateMovies() {{
-    const shuffled = [...allMovies].sort(() => 0.5 - Math.random());
-    movies = shuffled.slice(0, 50);
+function generateMovies(){{
+    const shuffled=[...allMovies].sort(()=>0.5-Math.random());
+    movies=shuffled.slice(0,50);
 }}
 
-function drawWheel() {{
+function drawWheel(){{
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    const arc = (2*Math.PI)/slices;
+    const arc=(2*Math.PI)/slices;
 
-    for (let i=0;i<slices;i++) {{
+    for(let i=0;i<slices;i++){{
         ctx.beginPath();
         ctx.moveTo(radius,radius);
-        ctx.arc(radius,radius,radius-15,i*arc+angle,(i+1)*arc+angle);
-        ctx.fillStyle = i===winnerIndex ? "#aac8ff" : (i%2===0 ? "#2a2a2a" : "#333");
+        ctx.arc(radius,radius,radius-12,i*arc+angle,(i+1)*arc+angle);
+        ctx.fillStyle=i===winnerIndex?"#aac8ff":(i%2===0?"#1f232b":"#2a2f38");
         ctx.fill();
 
         ctx.save();
@@ -164,46 +182,45 @@ function drawWheel() {{
         ctx.rotate(i*arc+arc/2+angle);
         ctx.textAlign="right";
         ctx.fillStyle="#ddd";
-        ctx.font="10px Arial";
-        ctx.fillText(movies[i].title.substring(0,22),radius-30,0);
+        ctx.font="9px Arial";
+        ctx.fillText(movies[i].title.substring(0,20),radius-25,0);
         ctx.restore();
     }}
 
     ctx.beginPath();
-    ctx.arc(radius,radius,80,0,2*Math.PI);
-    ctx.fillStyle="#1a1a1a";
+    ctx.arc(radius,radius,70,0,2*Math.PI);
+    ctx.fillStyle="#16181f";
     ctx.fill();
 
     ctx.fillStyle="#aaa";
-    ctx.font="bold 16px Arial";
+    ctx.font="bold 14px Arial";
     ctx.textAlign="center";
-    ctx.fillText(spinning ? "SPINNING..." : "READY",radius,radius+5);
+    ctx.fillText(spinning?"SPINNING...":"READY",radius,radius+5);
 
     ctx.beginPath();
-    ctx.moveTo(radius,8);
-    ctx.lineTo(radius-16,55);
-    ctx.lineTo(radius+16,55);
+    ctx.moveTo(radius,6);
+    ctx.lineTo(radius-12,40);
+    ctx.lineTo(radius+12,40);
     ctx.fillStyle="white";
     ctx.fill();
 }}
 
-function spin() {{
+function spin(){{
     if(spinning) return;
     spinning=true;
     winnerIndex=null;
     generateMovies();
 
-    let velocity = Math.random()*0.4+0.35;
+    let velocity=Math.random()*0.4+0.35;
 
-    function animate() {{
+    function animate(){{
         angle+=velocity;
         velocity*=0.985;
-
         drawWheel();
 
         if(velocity>0.002){{
             requestAnimationFrame(animate);
-        }} else {{
+        }}else{{
             finish();
         }}
     }}
@@ -214,12 +231,11 @@ function finish(){{
     spinning=false;
     const arc=(2*Math.PI)/slices;
     winnerIndex=Math.floor(((2*Math.PI-(angle%(2*Math.PI)))/(2*Math.PI))*slices)%slices;
-
     drawWheel();
 
     confetti({{
-        particleCount:250,
-        spread:140
+        particleCount:200,
+        spread:130
     }});
 
     const selected=movies[winnerIndex];
@@ -241,4 +257,4 @@ spinAgain.onclick=()=>{{ modal.style.display="none"; spin(); }};
 generateMovies();
 drawWheel();
 </script>
-""", height=1000)
+""", height=820)
