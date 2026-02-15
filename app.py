@@ -12,17 +12,22 @@ def load_data():
 
 df = load_data()
 
+st.markdown("<h1 style='text-align:center; margin-top:10px;'>Netflix Roulette</h1>", unsafe_allow_html=True)
+
+# ---------- Genre Dropdown ----------
 all_genres = sorted(set(
     genre.strip()
     for genres in df["listed_in"]
     for genre in genres.split(",")
 ))
 
-genre = st.selectbox(
-    "Choose Genre (Optional)",
-    ["All"] + all_genres,
-    label_visibility="collapsed"
-)
+col1, col2, col3 = st.columns([2,3,2])
+with col2:
+    genre = st.selectbox(
+        "Choose Genre",
+        ["All"] + all_genres,
+        label_visibility="collapsed"
+    )
 
 if genre == "All":
     filtered = df
@@ -44,15 +49,12 @@ html, body {{
 }}
 
 #wrapper {{
-    height:100vh;
+    height:85vh;
     display:flex;
     flex-direction:column;
     align-items:center;
-    justify-content:flex-start;
-    padding-top:20px;
+    justify-content:center;
 }}
-
-h1 {{ margin:5px 0 10px 0; }}
 
 #wheelContainer {{
     position:relative;
@@ -77,15 +79,10 @@ h1 {{ margin:5px 0 10px 0; }}
 
 #modal {{
     position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    backdrop-filter: blur(10px);
-    background:rgba(0,0,0,0.6);
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
     display:none;
-    justify-content:center;
-    align-items:center;
 }}
 
 #modalContent {{
@@ -94,7 +91,7 @@ h1 {{ margin:5px 0 10px 0; }}
     border-radius:18px;
     width:480px;
     text-align:center;
-    box-shadow:0 0 35px rgba(170,200,255,0.6);
+    box-shadow:0 0 30px rgba(170,200,255,0.5);
     position:relative;
 }}
 
@@ -118,12 +115,12 @@ h1 {{ margin:5px 0 10px 0; }}
 </style>
 
 <div id="wrapper">
-<h1>Netflix Roulette</h1>
 
 <div id="wheelContainer">
     <canvas id="wheel" width="480" height="480"></canvas>
     <button id="spinBtn">SPIN</button>
 </div>
+
 </div>
 
 <div id="modal">
@@ -192,14 +189,13 @@ function drawWheel(glow=false){{
     ctx.textAlign="center";
     ctx.fillText(spinning?"SPINNING":"READY",radius,radius+5);
 
-    // ARROW AT TOP POINTING DOWN
+    // Arrow at top pointing DOWN
     ctx.beginPath();
     ctx.moveTo(radius,0);
     ctx.lineTo(radius-14,35);
     ctx.lineTo(radius+14,35);
     ctx.fillStyle="white";
-    ctx.shadowColor="black";
-    ctx.shadowBlur=8;
+    ctx.shadowBlur=0;
     ctx.fill();
 }}
 
@@ -225,12 +221,10 @@ function spin(){{
         if(!start) start=timestamp;
         const progress=timestamp-start;
         const t=Math.min(progress/duration,1);
-
         const ease=1-Math.pow(1-t,3);
 
         angle=initialAngle+(finalAngle-initialAngle)*ease;
 
-        // tick effect
         const currentIndex=Math.floor(((2*Math.PI-(angle%(2*Math.PI)))/(2*Math.PI))*slices)%slices;
         if(currentIndex!==lastTickIndex){{
             tickAudio.currentTime=0;
@@ -243,9 +237,8 @@ function spin(){{
         if(t<1){{
             requestAnimationFrame(animate);
         }}else{{
-            // overshoot bounce
-            angle+=0.05;
-            setTimeout(()=>{{ angle-=0.05; finish(); }},120);
+            angle=finalAngle%(2*Math.PI);
+            finish();
         }}
     }}
 
@@ -257,8 +250,8 @@ function finish(){{
     drawWheel(true);
 
     confetti({{
-        particleCount:250,
-        spread:140
+        particleCount:200,
+        spread:130
     }});
 
     const selected=movies[winnerIndex];
@@ -270,7 +263,7 @@ function finish(){{
         <p><strong>Director:</strong> ${{selected.director||"Unknown"}}</p>
     `;
 
-    modal.style.display="flex";
+    modal.style.display="block";
 }}
 
 spinBtn.onclick=spin;
