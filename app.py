@@ -12,7 +12,7 @@ def load_data():
 
 df = load_data()
 
-st.markdown("<h1 style='text-align:center;'>Netflix Roulette</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;font-family:Arial;'>Netflix Roulette</h1>", unsafe_allow_html=True)
 
 # -------- Genre Selector --------
 all_genres = sorted(set(
@@ -32,24 +32,36 @@ movie_data_json = json.dumps(filtered.to_dict(orient="records"))
 
 st.components.v1.html(f"""
 <style>
+* {{
+    font-family: Arial, sans-serif;
+}}
+
 body {{
-    background-color: #111;
-    color: white;
+    background-color:#111;
+}}
+
+#wheelContainer {{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
 }}
 
 #spinBtn {{
-    margin-top:25px;
-    padding:14px 34px;
-    font-size:18px;
-    background:#2a2a2a;
-    color:white;
-    border:1px solid #444;
-    border-radius:10px;
+    position:absolute;
+    width:120px;
+    height:120px;
+    border-radius:60px;
+    border:2px solid #555;
+    background:#1f1f1f;
+    color:#ccc;
+    font-size:16px;
     cursor:pointer;
+    transition:0.3s;
 }}
 
 #spinBtn:hover {{
-    background:#333;
+    background:#2a2a2a;
 }}
 
 #modal {{
@@ -58,43 +70,57 @@ body {{
     left:0;
     width:100%;
     height:100%;
-    background:rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    background:rgba(0,0,0,0.6);
     display:none;
     justify-content:center;
     align-items:center;
+    animation: fadeIn 0.4s ease;
+}}
+
+@keyframes fadeIn {{
+    from {{ opacity:0 }}
+    to {{ opacity:1 }}
 }}
 
 #modalContent {{
     background:#1a1a1a;
     padding:30px;
-    border-radius:14px;
+    border-radius:16px;
     width:500px;
     text-align:center;
-    box-shadow:0 0 30px rgba(150,180,255,0.5);
+    box-shadow:0 0 35px rgba(170,200,255,0.6);
 }}
 
 #closeBtn {{
     position:absolute;
-    top:15px;
-    right:25px;
+    top:20px;
+    right:30px;
     font-size:22px;
     cursor:pointer;
+}}
+
+#spinAgain {{
+    margin-top:20px;
+    padding:10px 20px;
+    background:#2a2a2a;
     color:white;
+    border:1px solid #444;
+    border-radius:8px;
+    cursor:pointer;
 }}
 </style>
 
-<div style="display:flex; flex-direction:column; align-items:center;">
-
-<canvas id="wheel" width="650" height="650"></canvas>
-
-<button id="spinBtn">SPIN</button>
-
+<div id="wheelContainer">
+    <canvas id="wheel" width="650" height="650"></canvas>
+    <button id="spinBtn">SPIN</button>
 </div>
 
 <div id="modal">
     <div id="modalContent">
         <div id="closeBtn">✕</div>
         <div id="resultText"></div>
+        <button id="spinAgain">Spin Again</button>
     </div>
 </div>
 
@@ -108,118 +134,111 @@ const spinBtn = document.getElementById("spinBtn");
 const modal = document.getElementById("modal");
 const resultText = document.getElementById("resultText");
 const closeBtn = document.getElementById("closeBtn");
+const spinAgain = document.getElementById("spinAgain");
 
 const radius = canvas.width / 2;
-
-let angle = 0;
 let slices = 50;
 let movies = [];
+let angle = 0;
 let spinning = false;
+let winnerIndex = null;
 
-function generateWheelMovies() {{
+function generateMovies() {{
     const shuffled = [...allMovies].sort(() => 0.5 - Math.random());
     movies = shuffled.slice(0, 50);
 }}
 
-function drawWheel(glowColor=null) {{
+function drawWheel() {{
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    const arc = (2 * Math.PI) / slices;
+    const arc = (2*Math.PI)/slices;
 
-    for (let i=0; i<slices; i++) {{
+    for (let i=0;i<slices;i++) {{
         ctx.beginPath();
-        ctx.moveTo(radius, radius);
-        ctx.arc(radius, radius, radius-15, i*arc+angle, (i+1)*arc+angle);
-        ctx.fillStyle = i % 2 == 0 ? "#2a2a2a" : "#3a3a3a";
+        ctx.moveTo(radius,radius);
+        ctx.arc(radius,radius,radius-15,i*arc+angle,(i+1)*arc+angle);
+        ctx.fillStyle = i===winnerIndex ? "#aac8ff" : (i%2===0 ? "#2a2a2a" : "#333");
         ctx.fill();
 
         ctx.save();
-        ctx.translate(radius, radius);
+        ctx.translate(radius,radius);
         ctx.rotate(i*arc+arc/2+angle);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#ddd";
-        ctx.font = "10px Arial";
-        ctx.fillText(movies[i].title.substring(0,22), radius-30, 0);
+        ctx.textAlign="right";
+        ctx.fillStyle="#ddd";
+        ctx.font="10px Arial";
+        ctx.fillText(movies[i].title.substring(0,22),radius-30,0);
         ctx.restore();
     }}
 
-    if (glowColor) {{
-        ctx.beginPath();
-        ctx.arc(radius, radius, radius-10, 0, 2*Math.PI);
-        ctx.strokeStyle = glowColor;
-        ctx.lineWidth = 6;
-        ctx.shadowColor = glowColor;
-        ctx.shadowBlur = 15;
-        ctx.stroke();
-    }}
-
     ctx.beginPath();
-    ctx.arc(radius, radius, 80, 0, 2*Math.PI);
-    ctx.fillStyle = "#1a1a1a";
+    ctx.arc(radius,radius,80,0,2*Math.PI);
+    ctx.fillStyle="#1a1a1a";
     ctx.fill();
 
-    ctx.fillStyle = "#aaa";
-    ctx.font = "bold 16px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(spinning ? "SPINNING..." : "READY", radius, radius+5);
+    ctx.fillStyle="#aaa";
+    ctx.font="bold 16px Arial";
+    ctx.textAlign="center";
+    ctx.fillText(spinning ? "SPINNING..." : "READY",radius,radius+5);
 
     ctx.beginPath();
-    ctx.moveTo(radius, 8);
-    ctx.lineTo(radius-16, 55);
-    ctx.lineTo(radius+16, 55);
-    ctx.fillStyle = "white";
+    ctx.moveTo(radius,8);
+    ctx.lineTo(radius-16,55);
+    ctx.lineTo(radius+16,55);
+    ctx.fillStyle="white";
     ctx.fill();
 }}
 
 function spin() {{
-    if (spinning) return;
+    if(spinning) return;
+    spinning=true;
+    winnerIndex=null;
+    generateMovies();
 
-    generateWheelMovies();
-    spinning = true;
-    let velocity = Math.random()*0.4 + 0.35;
+    let velocity = Math.random()*0.4+0.35;
 
     function animate() {{
-        angle += velocity;
-        velocity *= 0.985;
+        angle+=velocity;
+        velocity*=0.985;
 
-        drawWheel("rgba(255,255,255,0.15)");
+        drawWheel();
 
-        if (velocity > 0.002) {{
+        if(velocity>0.002){{
             requestAnimationFrame(animate);
         }} else {{
-            spinning = false;
-            finishSpin();
+            finish();
         }}
     }}
-
     animate();
 }}
 
-function finishSpin() {{
-    const arc = (2 * Math.PI) / slices;
-    const index = Math.floor(((2*Math.PI - (angle % (2*Math.PI))) / (2*Math.PI)) * slices) % slices;
-    const selected = movies[index];
+function finish(){{
+    spinning=false;
+    const arc=(2*Math.PI)/slices;
+    winnerIndex=Math.floor(((2*Math.PI-(angle%(2*Math.PI)))/(2*Math.PI))*slices)%slices;
 
-    drawWheel("rgba(170,200,255,0.6)");
+    drawWheel();
 
     confetti({{
-        particleCount: 200,
-        spread: 120
+        particleCount:250,
+        spread:140
     }});
 
-    resultText.innerHTML = `
-        <h2>${{selected.title}} (${{selected.release_year}}) [${{selected.rating || "NR"}}]</h2>
+    const selected=movies[winnerIndex];
+
+    resultText.innerHTML=`
+        <h2>${{selected.title}} (${{selected.release_year}}) [${{selected.rating||"NR"}}]</h2>
         <p><strong>Runtime:</strong> ${{selected.duration}}</p>
         <p><strong>Genre:</strong> ${{selected.listed_in}}</p>
-        <p><strong>Director:</strong> ${{selected.director || "Unknown"}}</p>
+        <p><strong>Director:</strong> ${{selected.director||"Unknown"}}</p>
     `;
 
-    modal.style.display = "flex";
+    modal.style.display="flex";
 }}
 
-spinBtn.onclick = spin;
-closeBtn.onclick = () => modal.style.display = "none";
+spinBtn.onclick=spin;
+closeBtn.onclick=()=>modal.style.display="none";
+spinAgain.onclick=()=>{{ modal.style.display="none"; spin(); }};
 
-generateWheelMovies();
+generateMovies();
 drawWheel();
 </script>
-""", height=950)
+""", height=1000)
