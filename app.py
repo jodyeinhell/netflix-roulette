@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import random
 import json
 
 st.set_page_config(page_title="Netflix Roulette", page_icon="🎬", layout="wide")
@@ -13,9 +12,9 @@ def load_data():
 
 df = load_data()
 
-st.markdown("<h1 style='text-align:center;'>🎬 Netflix Roulette</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;'>Netflix Roulette</h1>", unsafe_allow_html=True)
 
-# ---------- Genre Selector ----------
+# -------- Genre Selector --------
 all_genres = sorted(set(
     genre.strip()
     for genres in df["listed_in"]
@@ -29,116 +28,140 @@ if genre == "All":
 else:
     filtered = df[df["listed_in"].str.contains(genre, na=False)]
 
-wheel_movies = filtered.sample(50) if len(filtered) >= 50 else filtered
-wheel_movies = wheel_movies.to_dict(orient="records")
-titles = [m["title"] for m in wheel_movies]
-
-movie_data_json = json.dumps(wheel_movies)
+movie_data_json = json.dumps(filtered.to_dict(orient="records"))
 
 st.components.v1.html(f"""
-<div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+<style>
+body {{
+    background-color: #111;
+    color: white;
+}}
+
+#spinBtn {{
+    margin-top:25px;
+    padding:14px 34px;
+    font-size:18px;
+    background:#2a2a2a;
+    color:white;
+    border:1px solid #444;
+    border-radius:10px;
+    cursor:pointer;
+}}
+
+#spinBtn:hover {{
+    background:#333;
+}}
+
+#modal {{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.7);
+    display:none;
+    justify-content:center;
+    align-items:center;
+}}
+
+#modalContent {{
+    background:#1a1a1a;
+    padding:30px;
+    border-radius:14px;
+    width:500px;
+    text-align:center;
+    box-shadow:0 0 30px rgba(150,180,255,0.5);
+}}
+
+#closeBtn {{
+    position:absolute;
+    top:15px;
+    right:25px;
+    font-size:22px;
+    cursor:pointer;
+    color:white;
+}}
+</style>
+
+<div style="display:flex; flex-direction:column; align-items:center;">
 
 <canvas id="wheel" width="650" height="650"></canvas>
 
-<button id="spinBtn"
-style="
-    margin-top:25px;
-    padding:14px 34px;
-    font-size:20px;
-    background:linear-gradient(135deg,#e50914,#ff2a2a);
-    color:white;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-    box-shadow:0 0 20px rgba(229,9,20,0.6);
-">
-🎡 SPIN
-</button>
+<button id="spinBtn">SPIN</button>
 
-<div id="resultCard"
-style="
-    margin-top:35px;
-    padding:25px;
-    width:550px;
-    background:#111;
-    color:white;
-    border-radius:16px;
-    display:none;
-    text-align:center;
-    box-shadow:0 0 35px rgba(229,9,20,0.8);
-">
 </div>
 
+<div id="modal">
+    <div id="modalContent">
+        <div id="closeBtn">✕</div>
+        <div id="resultText"></div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
 <script>
-const movies = {movie_data_json};
-const titles = {json.dumps(titles)};
-
+const allMovies = {movie_data_json};
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
 const spinBtn = document.getElementById("spinBtn");
-const resultCard = document.getElementById("resultCard");
+const modal = document.getElementById("modal");
+const resultText = document.getElementById("resultText");
+const closeBtn = document.getElementById("closeBtn");
 
 const radius = canvas.width / 2;
-const slices = movies.length;
-const arc = (2 * Math.PI) / slices;
 
 let angle = 0;
+let slices = 50;
+let movies = [];
 let spinning = false;
 
-// ---------- Draw Wheel ----------
-function drawWheel() {{
+function generateWheelMovies() {{
+    const shuffled = [...allMovies].sort(() => 0.5 - Math.random());
+    movies = shuffled.slice(0, 50);
+}}
+
+function drawWheel(glowColor=null) {{
     ctx.clearRect(0,0,canvas.width,canvas.height);
+    const arc = (2 * Math.PI) / slices;
 
     for (let i=0; i<slices; i++) {{
-        const gradient = ctx.createLinearGradient(0,0,650,650);
-        gradient.addColorStop(0, i%2==0 ? "#e50914" : "#ff3b3b");
-        gradient.addColorStop(1, i%2==0 ? "#1a1a1a" : "#333");
-
         ctx.beginPath();
         ctx.moveTo(radius, radius);
-        ctx.arc(radius, radius, radius-10, i*arc+angle, (i+1)*arc+angle);
-        ctx.fillStyle = gradient;
+        ctx.arc(radius, radius, radius-15, i*arc+angle, (i+1)*arc+angle);
+        ctx.fillStyle = i % 2 == 0 ? "#2a2a2a" : "#3a3a3a";
         ctx.fill();
 
         ctx.save();
         ctx.translate(radius, radius);
         ctx.rotate(i*arc+arc/2+angle);
         ctx.textAlign = "right";
-        ctx.fillStyle = "white";
-        ctx.font = "bold 11px Arial";
-        ctx.shadowColor = "black";
-        ctx.shadowBlur = 4;
-        ctx.fillText(titles[i].substring(0,24), radius-25, 0);
+        ctx.fillStyle = "#ddd";
+        ctx.font = "10px Arial";
+        ctx.fillText(movies[i].title.substring(0,22), radius-30, 0);
         ctx.restore();
     }}
 
-    // Glow ring
-    if (spinning) {{
+    if (glowColor) {{
         ctx.beginPath();
-        ctx.arc(radius, radius, radius-5, 0, 2*Math.PI);
-        ctx.strokeStyle = "rgba(229,9,20,0.8)";
-        ctx.lineWidth = 8;
-        ctx.shadowColor = "#e50914";
-        ctx.shadowBlur = 25;
+        ctx.arc(radius, radius, radius-10, 0, 2*Math.PI);
+        ctx.strokeStyle = glowColor;
+        ctx.lineWidth = 6;
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 15;
         ctx.stroke();
     }}
 
-    // Center circle
     ctx.beginPath();
-    ctx.arc(radius, radius, 90, 0, 2*Math.PI);
-    ctx.fillStyle = "#111";
+    ctx.arc(radius, radius, 80, 0, 2*Math.PI);
+    ctx.fillStyle = "#1a1a1a";
     ctx.fill();
 
-    ctx.fillStyle = "#e50914";
-    ctx.font = "bold 18px Arial";
+    ctx.fillStyle = "#aaa";
+    ctx.font = "bold 16px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(spinning ? "SPINNING..." : "READY", radius, radius+6);
+    ctx.fillText(spinning ? "SPINNING..." : "READY", radius, radius+5);
 
-    // Pointer
     ctx.beginPath();
     ctx.moveTo(radius, 8);
     ctx.lineTo(radius-16, 55);
@@ -147,65 +170,56 @@ function drawWheel() {{
     ctx.fill();
 }}
 
-// ---------- Easing Spin ----------
 function spin() {{
     if (spinning) return;
+
+    generateWheelMovies();
     spinning = true;
-    resultCard.style.display = "none";
+    let velocity = Math.random()*0.4 + 0.35;
 
-    let start = null;
-    const duration = 5000;
-    const initialVelocity = Math.random()*10 + 25;
+    function animate() {{
+        angle += velocity;
+        velocity *= 0.985;
 
-    const drum = new Audio("https://actions.google.com/sounds/v1/drums/drum_roll.ogg");
-    drum.loop = true;
-    drum.play();
+        drawWheel("rgba(255,255,255,0.15)");
 
-    function animate(timestamp) {{
-        if (!start) start = timestamp;
-        let progress = timestamp - start;
-        let percent = progress / duration;
-
-        if (percent < 1) {{
-            let ease = 1 - Math.pow(1-percent,3);
-            angle += initialVelocity * (1 - ease);
-            drawWheel();
+        if (velocity > 0.002) {{
             requestAnimationFrame(animate);
         }} else {{
-            drum.pause();
             spinning = false;
             finishSpin();
         }}
     }}
 
-    requestAnimationFrame(animate);
+    animate();
 }}
 
 function finishSpin() {{
+    const arc = (2 * Math.PI) / slices;
     const index = Math.floor(((2*Math.PI - (angle % (2*Math.PI))) / (2*Math.PI)) * slices) % slices;
     const selected = movies[index];
 
+    drawWheel("rgba(170,200,255,0.6)");
+
     confetti({{
-        particleCount: 300,
-        spread: 160,
-        origin: {{ y: 0.6 }}
+        particleCount: 200,
+        spread: 120
     }});
 
-    const winSound = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg");
-    winSound.play();
-
-    resultCard.innerHTML = `
+    resultText.innerHTML = `
         <h2>${{selected.title}} (${{selected.release_year}}) [${{selected.rating || "NR"}}]</h2>
         <p><strong>Runtime:</strong> ${{selected.duration}}</p>
         <p><strong>Genre:</strong> ${{selected.listed_in}}</p>
         <p><strong>Director:</strong> ${{selected.director || "Unknown"}}</p>
     `;
 
-    resultCard.style.display = "block";
+    modal.style.display = "flex";
 }}
 
 spinBtn.onclick = spin;
+closeBtn.onclick = () => modal.style.display = "none";
 
+generateWheelMovies();
 drawWheel();
 </script>
-""", height=1000)
+""", height=950)
