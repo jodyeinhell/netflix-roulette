@@ -33,9 +33,7 @@ movie_data_json = json.dumps(filtered.to_dict(orient="records"))
 
 st.components.v1.html(f"""
 <style>
-* {{
-    font-family: Arial, sans-serif;
-}}
+* {{ font-family: Arial, sans-serif; }}
 
 html, body {{
     margin:0;
@@ -54,9 +52,7 @@ html, body {{
     padding-top:20px;
 }}
 
-h1 {{
-    margin:5px 0 10px 0;
-}}
+h1 {{ margin:5px 0 10px 0; }}
 
 #wheelContainer {{
     position:relative;
@@ -77,9 +73,7 @@ h1 {{
     cursor:pointer;
 }}
 
-#spinBtn:hover {{
-    background:#262a33;
-}}
+#spinBtn:hover {{ background:#262a33; }}
 
 #modal {{
     position:fixed;
@@ -102,10 +96,6 @@ h1 {{
     text-align:center;
     box-shadow:0 0 35px rgba(170,200,255,0.6);
     position:relative;
-}}
-
-#modalContent h2 {{
-    color:white;
 }}
 
 #closeBtn {{
@@ -178,7 +168,7 @@ function drawWheel(){{
         ctx.beginPath();
         ctx.moveTo(radius,radius);
         ctx.arc(radius,radius,radius-10,i*arc+angle,(i+1)*arc+angle);
-        ctx.fillStyle=i===winnerIndex?"#aac8ff":(i%2===0?"#1f232b":"#2a2f38");
+        ctx.fillStyle=(i===winnerIndex && !spinning)?"#aac8ff":(i%2===0?"#1f232b":"#2a2f38");
         ctx.fill();
 
         ctx.save();
@@ -191,6 +181,7 @@ function drawWheel(){{
         ctx.restore();
     }}
 
+    // center
     ctx.beginPath();
     ctx.arc(radius,radius,65,0,2*Math.PI);
     ctx.fillStyle="#16181f";
@@ -201,11 +192,11 @@ function drawWheel(){{
     ctx.textAlign="center";
     ctx.fillText(spinning?"SPINNING":"READY",radius,radius+5);
 
-    // POINTER now pointing DOWN
+    // arrow at TOP pointing down
     ctx.beginPath();
-    ctx.moveTo(radius,canvas.height-5);
-    ctx.lineTo(radius-12,canvas.height-40);
-    ctx.lineTo(radius+12,canvas.height-40);
+    ctx.moveTo(radius,0);
+    ctx.lineTo(radius-12,30);
+    ctx.lineTo(radius+12,30);
     ctx.fillStyle="white";
     ctx.fill();
 }}
@@ -216,27 +207,41 @@ function spin(){{
     winnerIndex=null;
     generateMovies();
 
-    // pick winner first
     winnerIndex=Math.floor(Math.random()*slices);
 
     const arc=(2*Math.PI)/slices;
-    const targetAngle=(2*Math.PI)-(winnerIndex*arc+arc/2);
 
-    let velocity=Math.random()*0.4+0.35;
+    // angle needed so winner center lands at top (270 degrees)
+    const targetRotation = (Math.PI*3/2) - (winnerIndex*arc + arc/2);
 
-    function animate(){{
-        angle+=velocity;
-        velocity*=0.985;
+    const extraSpins = 8 * 2*Math.PI;
+    const finalAngle = targetRotation + extraSpins;
+
+    const duration = 4000;
+    let start=null;
+    const initialAngle = angle;
+
+    function animate(timestamp){{
+        if(!start) start=timestamp;
+        const progress=timestamp-start;
+        const t=Math.min(progress/duration,1);
+
+        // ease-out cubic
+        const ease=1 - Math.pow(1-t,3);
+
+        angle = initialAngle + (finalAngle-initialAngle)*ease;
+
         drawWheel();
 
-        if(velocity>0.002){{
+        if(t<1){{
             requestAnimationFrame(animate);
-        }}else{{
-            angle=targetAngle;
+        }} else {{
+            angle=finalAngle % (2*Math.PI);
             finish();
         }}
     }}
-    animate();
+
+    requestAnimationFrame(animate);
 }}
 
 function finish(){{
