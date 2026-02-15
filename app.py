@@ -118,14 +118,12 @@ h1 {{ margin:5px 0 10px 0; }}
 </style>
 
 <div id="wrapper">
-
 <h1>Netflix Roulette</h1>
 
 <div id="wheelContainer">
     <canvas id="wheel" width="480" height="480"></canvas>
     <button id="spinBtn">SPIN</button>
 </div>
-
 </div>
 
 <div id="modal">
@@ -154,13 +152,16 @@ let movies = [];
 let angle = 0;
 let spinning = false;
 let winnerIndex = null;
+let lastTickIndex = null;
+
+const tickAudio = new Audio("https://actions.google.com/sounds/v1/impacts/wood_plank_flicks.ogg");
 
 function generateMovies(){{
     const shuffled=[...allMovies].sort(()=>0.5-Math.random());
     movies=shuffled.slice(0,50);
 }}
 
-function drawWheel(){{
+function drawWheel(glow=false){{
     ctx.clearRect(0,0,canvas.width,canvas.height);
     const arc=(2*Math.PI)/slices;
 
@@ -168,7 +169,7 @@ function drawWheel(){{
         ctx.beginPath();
         ctx.moveTo(radius,radius);
         ctx.arc(radius,radius,radius-10,i*arc+angle,(i+1)*arc+angle);
-        ctx.fillStyle=(i===winnerIndex && !spinning)?"#aac8ff":(i%2===0?"#1f232b":"#2a2f38");
+        ctx.fillStyle=(i===winnerIndex && glow)?"#aac8ff":(i%2===0?"#1f232b":"#2a2f38");
         ctx.fill();
 
         ctx.save();
@@ -181,7 +182,6 @@ function drawWheel(){{
         ctx.restore();
     }}
 
-    // center
     ctx.beginPath();
     ctx.arc(radius,radius,65,0,2*Math.PI);
     ctx.fillStyle="#16181f";
@@ -192,12 +192,14 @@ function drawWheel(){{
     ctx.textAlign="center";
     ctx.fillText(spinning?"SPINNING":"READY",radius,radius+5);
 
-    // arrow at TOP pointing down
+    // ARROW AT TOP POINTING DOWN
     ctx.beginPath();
     ctx.moveTo(radius,0);
-    ctx.lineTo(radius-12,30);
-    ctx.lineTo(radius+12,30);
+    ctx.lineTo(radius-14,35);
+    ctx.lineTo(radius+14,35);
     ctx.fillStyle="white";
+    ctx.shadowColor="black";
+    ctx.shadowBlur=8;
     ctx.fill();
 }}
 
@@ -210,34 +212,40 @@ function spin(){{
     winnerIndex=Math.floor(Math.random()*slices);
 
     const arc=(2*Math.PI)/slices;
+    const targetRotation=(Math.PI*3/2)-(winnerIndex*arc+arc/2);
 
-    // angle needed so winner center lands at top (270 degrees)
-    const targetRotation = (Math.PI*3/2) - (winnerIndex*arc + arc/2);
+    const extraSpins=6*2*Math.PI;
+    const finalAngle=targetRotation+extraSpins;
 
-    const extraSpins = 8 * 2*Math.PI;
-    const finalAngle = targetRotation + extraSpins;
-
-    const duration = 4000;
+    const duration=4500;
     let start=null;
-    const initialAngle = angle;
+    const initialAngle=angle;
 
     function animate(timestamp){{
         if(!start) start=timestamp;
         const progress=timestamp-start;
         const t=Math.min(progress/duration,1);
 
-        // ease-out cubic
-        const ease=1 - Math.pow(1-t,3);
+        const ease=1-Math.pow(1-t,3);
 
-        angle = initialAngle + (finalAngle-initialAngle)*ease;
+        angle=initialAngle+(finalAngle-initialAngle)*ease;
 
-        drawWheel();
+        // tick effect
+        const currentIndex=Math.floor(((2*Math.PI-(angle%(2*Math.PI)))/(2*Math.PI))*slices)%slices;
+        if(currentIndex!==lastTickIndex){{
+            tickAudio.currentTime=0;
+            tickAudio.play();
+            lastTickIndex=currentIndex;
+        }}
+
+        drawWheel(false);
 
         if(t<1){{
             requestAnimationFrame(animate);
-        }} else {{
-            angle=finalAngle % (2*Math.PI);
-            finish();
+        }}else{{
+            // overshoot bounce
+            angle+=0.05;
+            setTimeout(()=>{{ angle-=0.05; finish(); }},120);
         }}
     }}
 
@@ -246,11 +254,11 @@ function spin(){{
 
 function finish(){{
     spinning=false;
-    drawWheel();
+    drawWheel(true);
 
     confetti({{
-        particleCount:200,
-        spread:130
+        particleCount:250,
+        spread:140
     }});
 
     const selected=movies[winnerIndex];
