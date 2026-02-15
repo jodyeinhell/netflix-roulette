@@ -12,14 +12,17 @@ def load_data():
 
 df = load_data()
 
-# -------- Genre Selector --------
 all_genres = sorted(set(
     genre.strip()
     for genres in df["listed_in"]
     for genre in genres.split(",")
 ))
 
-genre = st.selectbox("Choose Genre (Optional)", ["All"] + all_genres)
+genre = st.selectbox(
+    "Choose Genre (Optional)",
+    ["All"] + all_genres,
+    label_visibility="collapsed"
+)
 
 if genre == "All":
     filtered = df
@@ -38,7 +41,7 @@ html, body {{
     margin:0;
     padding:0;
     overflow:hidden;
-    background:#0f1117;
+    background:#0e1117;
     color:white;
 }}
 
@@ -46,8 +49,13 @@ html, body {{
     height:100vh;
     display:flex;
     flex-direction:column;
-    justify-content:center;
     align-items:center;
+    justify-content:flex-start;
+    padding-top:20px;
+}}
+
+h1 {{
+    margin:5px 0 10px 0;
 }}
 
 #wheelContainer {{
@@ -56,6 +64,9 @@ html, body {{
 
 #spinBtn {{
     position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
     width:110px;
     height:110px;
     border-radius:55px;
@@ -85,22 +96,16 @@ html, body {{
 
 #modalContent {{
     background:#16181f;
-    padding:35px;
+    padding:30px;
     border-radius:18px;
     width:480px;
     text-align:center;
-    box-shadow:0 0 35px rgba(170,200,255,0.5);
+    box-shadow:0 0 35px rgba(170,200,255,0.6);
     position:relative;
 }}
 
 #modalContent h2 {{
     color:white;
-    margin-bottom:10px;
-}}
-
-#modalContent p {{
-    color:white;
-    margin:6px 0;
 }}
 
 #closeBtn {{
@@ -109,12 +114,11 @@ html, body {{
     right:20px;
     font-size:20px;
     cursor:pointer;
-    color:white;
 }}
 
 #spinAgain {{
     margin-top:20px;
-    padding:10px 20px;
+    padding:8px 18px;
     background:#1f232b;
     color:white;
     border:1px solid #444;
@@ -125,10 +129,10 @@ html, body {{
 
 <div id="wrapper">
 
-<h1 style="margin-bottom:10px;">Netflix Roulette</h1>
+<h1>Netflix Roulette</h1>
 
 <div id="wheelContainer">
-    <canvas id="wheel" width="520" height="520"></canvas>
+    <canvas id="wheel" width="480" height="480"></canvas>
     <button id="spinBtn">SPIN</button>
 </div>
 
@@ -173,7 +177,7 @@ function drawWheel(){{
     for(let i=0;i<slices;i++){{
         ctx.beginPath();
         ctx.moveTo(radius,radius);
-        ctx.arc(radius,radius,radius-12,i*arc+angle,(i+1)*arc+angle);
+        ctx.arc(radius,radius,radius-10,i*arc+angle,(i+1)*arc+angle);
         ctx.fillStyle=i===winnerIndex?"#aac8ff":(i%2===0?"#1f232b":"#2a2f38");
         ctx.fill();
 
@@ -183,24 +187,25 @@ function drawWheel(){{
         ctx.textAlign="right";
         ctx.fillStyle="#ddd";
         ctx.font="9px Arial";
-        ctx.fillText(movies[i].title.substring(0,20),radius-25,0);
+        ctx.fillText(movies[i].title.substring(0,18),radius-20,0);
         ctx.restore();
     }}
 
     ctx.beginPath();
-    ctx.arc(radius,radius,70,0,2*Math.PI);
+    ctx.arc(radius,radius,65,0,2*Math.PI);
     ctx.fillStyle="#16181f";
     ctx.fill();
 
     ctx.fillStyle="#aaa";
     ctx.font="bold 14px Arial";
     ctx.textAlign="center";
-    ctx.fillText(spinning?"SPINNING...":"READY",radius,radius+5);
+    ctx.fillText(spinning?"SPINNING":"READY",radius,radius+5);
 
+    // POINTER now pointing DOWN
     ctx.beginPath();
-    ctx.moveTo(radius,6);
-    ctx.lineTo(radius-12,40);
-    ctx.lineTo(radius+12,40);
+    ctx.moveTo(radius,canvas.height-5);
+    ctx.lineTo(radius-12,canvas.height-40);
+    ctx.lineTo(radius+12,canvas.height-40);
     ctx.fillStyle="white";
     ctx.fill();
 }}
@@ -210,6 +215,12 @@ function spin(){{
     spinning=true;
     winnerIndex=null;
     generateMovies();
+
+    // pick winner first
+    winnerIndex=Math.floor(Math.random()*slices);
+
+    const arc=(2*Math.PI)/slices;
+    const targetAngle=(2*Math.PI)-(winnerIndex*arc+arc/2);
 
     let velocity=Math.random()*0.4+0.35;
 
@@ -221,6 +232,7 @@ function spin(){{
         if(velocity>0.002){{
             requestAnimationFrame(animate);
         }}else{{
+            angle=targetAngle;
             finish();
         }}
     }}
@@ -229,8 +241,6 @@ function spin(){{
 
 function finish(){{
     spinning=false;
-    const arc=(2*Math.PI)/slices;
-    winnerIndex=Math.floor(((2*Math.PI-(angle%(2*Math.PI)))/(2*Math.PI))*slices)%slices;
     drawWheel();
 
     confetti({{
@@ -257,4 +267,4 @@ spinAgain.onclick=()=>{{ modal.style.display="none"; spin(); }};
 generateMovies();
 drawWheel();
 </script>
-""", height=820)
+""", height=720)
